@@ -64,6 +64,17 @@ void init_symbol_table()
 	symbols.funcs=NULL;
 	symbols.values=NULL;
 	value_stack_push();
+	func_d* f_read=new_function("read");
+	add_function_declaration(f_read);
+	func_d* f_write=new_function("write");
+	add_function_declaration(f_write);
+	f_read->return_kind=_int;
+	f_write->return_kind=_int;
+	f_write->parameter_count=1;
+	f_write->kinds=(val_kind*)malloc(sizeof(val_kind));
+	f_write->parameters=(type_d**)malloc(sizeof(val_d*));
+	f_write->kinds[0]=_int;
+	f_write->parameters[0]=NULL;
 }
 void destroy_symbol_table()
 {
@@ -248,10 +259,10 @@ void value_stack_pop()
 	{
 		p=q->values;
 		q->values=q->values->next;
-		if(p->is_true_value)
+		/*if(p->is_true_value)
 			free(p);
-		else
-			insert_head(symbols.values->values,p);
+		else*/
+		insert_head(symbols.values->values,p);
 	}	
 	free(q);
 }

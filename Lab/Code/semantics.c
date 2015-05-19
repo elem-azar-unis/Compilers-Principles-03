@@ -156,8 +156,11 @@ void semantic_analysis(Node* h)
 					para_count=0;
 					semantic_analysis(h->child[1]->child[2]);
 					temp->parameter_count=para_count;
-					temp->kinds=(val_kind*)malloc(sizeof(val_kind)*para_count);
-					temp->parameters=(type_d**)malloc(sizeof(val_d*)*para_count);
+					if(para_count!=0)
+					{
+						temp->kinds=(val_kind*)malloc(sizeof(val_kind)*para_count);
+						temp->parameters=(type_d**)malloc(sizeof(val_d*)*para_count);
+					}
 					for(int i=0;i<para_count;i++)
 					{
 						temp->kinds[i]=paras[i]->kind;
