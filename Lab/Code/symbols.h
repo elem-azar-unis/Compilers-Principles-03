@@ -117,3 +117,10 @@ val_d* find_value(const char* name);
 type_d* add_type_declaration(type_d* r);
 func_d* add_function_declaration(func_d* r);
 val_d* add_value_declaration(val_d* r);
+
+//得到结构体的大小；得到一个域(一定在该结构体中存在)在结构体内从头部开始的偏移量。
+int struct_get_size(type_d* s);
+int struct_get_offset(type_d* s,char* field);
+
+//int to string
+void itoa(unsigned long val, char* buf,unsigned radix);

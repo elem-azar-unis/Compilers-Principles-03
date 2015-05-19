@@ -5,5 +5,7 @@ struct Complex
 int main()
 {
 	struct Complex x;
-	y.image = 3.5;
+	int i=read();
+	write(i);
+	return write(i);
 } 

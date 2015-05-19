@@ -4,7 +4,7 @@
 #define YYSTYPE Node*
 #endif
 #define YYERROR_VERBOSE 1
-Node* head=NULL;
+static Node* head=NULL;
 void m_yyerror(char* msg,int lineno);
 char message[100];
 %}
@@ -162,9 +162,9 @@ Args : Exp COMMA Args {$$=create_node(Args);construct($$,3,$1,$2,$3);}
 %%
 int main(int argc,char** argv)
 {
-	if(argc!=2)
+	if(argc!=3)
 	{
-		printf("请输入且仅输入一个文件。\n");
+		printf("请输入一个源文件，一个目标文件\n");
 		return 1;
 	}
 	FILE* f=fopen(argv[1],"r");
@@ -179,6 +179,10 @@ int main(int argc,char** argv)
 		//print_tree(head);
 		init_symbol_table();
 		semantic_analysis(head);
+		if(!get_error_occured())
+		{
+			print_code(argv[2]);
+		}
 		destroy_symbol_table();
 	}
 	destroy_tree(head);

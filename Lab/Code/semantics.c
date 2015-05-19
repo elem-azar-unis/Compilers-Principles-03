@@ -1,14 +1,15 @@
 #include "semantics.h"
 #include "symbols.h"
-val_kind kind=USER_DEFINED;			//当前处理类型：int，float，用户定义类型
-type_d* val_type=NULL;				//当前处理的用户定义类型的定义结构体指针（如果需要）
-func_d* current_func=NULL;			//当前正在处理的函数定义指针。
-int para_count=0;					//参数数目。
-val_d* paras[512];					//各参数定义。不想用链表了。一个结构体，一个函数的变量、参数不超过512个。
-int need_count=0;					//是否需要记录定义的变量。
-int structing=0;					//是否正在定义结构体，用于标志当前变量定义是否是结构体内的域定义
-int do_not_push=0;					//提醒在函数刚建立的CompSt不需要push符号表。
-val_d* last_val=NULL;				//最近定义的变量。
+static val_kind kind=USER_DEFINED;			//当前处理类型：int，float，用户定义类型
+static type_d* val_type=NULL;				//当前处理的用户定义类型的定义结构体指针（如果需要）
+static func_d* current_func=NULL;			//当前正在处理的函数定义指针。
+static int para_count=0;					//参数数目。
+static val_d* paras[512];					//各参数定义。不想用链表了。一个结构体，一个函数的变量、参数不超过512个。
+static int need_count=0;					//是否需要记录定义的变量。
+static int structing=0;					//是否正在定义结构体，用于标志当前变量定义是否是结构体内的域定义
+static int do_not_push=0;					//提醒在函数刚建立的CompSt不需要push符号表。
+static val_d* last_val=NULL;				//最近定义的变量。
+static int error_occured=0;
 typedef struct stack
 {
 	val_kind kind;						//当前处理类型：int，float，用户定义类型
@@ -19,7 +20,7 @@ typedef struct stack
 	int structing;						//是否正在定义结构体，用于标志当前变量定义是否是结构体内的域定义
 	struct stack* next;
 }stack;
-stack* st_head=NULL;
+static stack* st_head=NULL;
 typedef enum id_type
 {
 	id_val,id_func
@@ -30,6 +31,10 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h);
 void* check_id(Node* h,id_type identity);
 //检查传入的Node*是否可以有左值
 int check_left(Node* h);
+int get_error_occured()
+{
+	return error_occured;
+}
 void push()
 {
 	stack* p=(stack*)malloc(sizeof(stack));
@@ -85,7 +90,10 @@ void semantic_analysis(Node* h)
 				//这里是使用已经定义的结构体
 				val_type=find_type(h->child[1]->child[0]->name);
 				if(val_type==NULL)
+				{	
 					printf("Error type 17 at Line %d: undefined struct %s.\n",h->line,h->child[1]->child[0]->name);
+					error_occured=1;
+				}
 			}
 			else
 			{
@@ -99,6 +107,7 @@ void semantic_analysis(Node* h)
 				if(val_type!=NULL || find_value(name)!=NULL)
 				{
 					printf("Error type 16 at Line %d: name %s is used.\n",h->line,name);
+					error_occured=1;
 					val_type=NULL;
 				}
 				else
@@ -142,7 +151,10 @@ void semantic_analysis(Node* h)
 				semantic_analysis(h->child[0]);
 				func_d* temp=find_function(h->child[1]->child[0]->name);
 				if(temp!=NULL)
+				{
 					printf("Error type 4 at Line %d: function %s is redefined.\n",h->line,h->child[1]->child[0]->name);
+					error_occured=1;
+				}
 				else
 				{
 					temp=new_function(h->child[1]->child[0]->name);
@@ -193,9 +205,15 @@ void semantic_analysis(Node* h)
 						if(paras[i]==che)
 							break;
 				if(i==para_count||i==-1)
+				{
+					error_occured=1;
 					printf("Error type 3 at Line %d: variable %s is redefined.\n",h->line,temp->name);
+				}
 				else
+				{
+					error_occured=1;
 					printf("Error type 15 at Line %d: Redefined field %s.\n",h->line,temp->name);
+				}
 				last_val=NULL;
 			}
 			else if(!(kind==USER_DEFINED && val_type==NULL))
@@ -254,7 +272,10 @@ void semantic_analysis(Node* h)
 					ana_exp(&temp1,&temp2,h->child[1]);
 					if(!(temp1==USER_DEFINED && temp2==NULL))
 						if(current_func->return_kind!= temp1 || current_func->return_type!=temp2)
+						{
 							printf("Error type 8 at Line %d: invalid return type\n",h->line);
+							error_occured=1;
+						}
 					break;
 				}
 				default:
@@ -263,7 +284,10 @@ void semantic_analysis(Node* h)
 					type_d* temp2;
 					ana_exp(&temp1,&temp2,h->child[2]);
 					if(temp1!=_int && !(temp1==USER_DEFINED && temp2==NULL))
+					{
 						printf("Error type 7 at Line %d: only int can be used as boolean\n",h->line);
+						error_occured=1;
+					}
 					for(int i=4;i<h->child_count;i++)
 						semantic_analysis(h->child[i]);
 					break;
@@ -277,7 +301,10 @@ void semantic_analysis(Node* h)
 			if(h->child_count==3)
 			{
 				if(structing)
+				{
+					error_occured=1;
 					printf("Error type 15 at Line %d: can't initialize a field while defining the struct\n",h->line);
+				}
 				else
 				{
 					val_kind temp1;
@@ -285,7 +312,10 @@ void semantic_analysis(Node* h)
 					ana_exp(&temp1,&temp2,h->child[2]);
 					if(!(temp1==USER_DEFINED && temp2==NULL) && last_val!=NULL)
 						if(last_val->kind!=temp1 || !type_equal(last_val->val_type,temp2))
+						{
+							error_occured=1;
 							printf("Error type 5 at Line %d: incompatible type near =\n",h->line);
+						}
 				}
 			}
 			break;
@@ -316,6 +346,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 				{
 					if(temp->is_true_value==0)
 					{
+						error_occured=1;
 						printf("Error type 1 at Line %d: %s is a field of a struct\n",h->line,temp->name);
 						*exp_kind=USER_DEFINED;
 						*exp_type=NULL;
@@ -359,6 +390,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 		{
 			if((temp1==USER_DEFINED && temp2!=NULL) || temp1==_float)
 			{
+				error_occured=1;
 				printf("Error type 7 at Line %d: only int can use \"!\"(not)\n",h->line);
 				*exp_kind=USER_DEFINED;
 				*exp_type=NULL;
@@ -373,6 +405,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 		{
 			if(temp1==USER_DEFINED && temp2!=NULL)
 			{
+				error_occured=1;
 				printf("Error type 7 at Line %d: only int or float can use \"-\"(minus)\n",h->line);
 				*exp_kind=USER_DEFINED;
 				*exp_type=NULL;
@@ -406,6 +439,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 			{
 				if(find_value(h->child[0]->name)!=NULL)
 				{
+					error_occured=1;
 					printf("Error type 11 at Line %d: %s is a variable, not a function\n",h->line,h->child[0]->name);
 					*exp_kind=USER_DEFINED;
 					*exp_type=NULL;
@@ -424,6 +458,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 				}
 				else
 				{
+					error_occured=1;
 					printf("Error type 9 at Line %d: unmatched parameters for function %s\n",h->line,temp->name);
 					*exp_kind=USER_DEFINED;
 					*exp_type=NULL;
@@ -437,17 +472,20 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 				ana_exp(&temp1,&temp2,h->child[0]);
 				if(temp1!=USER_DEFINED)
 				{
+					error_occured=1;
 					printf("Error type 13 at Line %d: use \".\" on none struct variable\n",h->line);
 					*exp_kind=USER_DEFINED;
 					*exp_type=NULL;
 				}
 				else if(temp2==NULL)
 				{
+					error_occured=1;
 					*exp_kind=USER_DEFINED;
 					*exp_type=NULL;
 				}
 				else if(temp2->kind==_array)
 				{
+					error_occured=1;
 					printf("Error type 13 at Line %d: use \".\" on none struct variable\n",h->line);
 					*exp_kind=USER_DEFINED;
 					*exp_type=NULL;
@@ -464,6 +502,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 						}
 					*exp_kind=USER_DEFINED;
 					*exp_type=NULL;
+					error_occured=1;
 					printf("Error type 14 at Line %d: undefined field %s for struct %s\n",h->line,h->child[2]->name,temp2->name);
 				}
 				break;
@@ -484,6 +523,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 				{
 					*exp_kind=USER_DEFINED;
 					*exp_type=NULL;
+					error_occured=1;
 					printf("Error type 7 at Line %d: only int can be used as boolean\n",h->line);
 				}
 				else
@@ -499,6 +539,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 				{
 					*exp_kind=USER_DEFINED;
 					*exp_type=NULL;
+					error_occured=1;
 					printf("Error type 6 at Line %d: the left-hand side of \"=\" must have left side value\n",h->line);
 				}
 				else
@@ -521,6 +562,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 					{
 						*exp_kind=USER_DEFINED;
 						*exp_type=NULL;
+						error_occured=1;
 						printf("Error type 5 at Line %d: both sides of \"=\" must be the same type\n",h->line);
 					}
 				}
@@ -546,6 +588,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 				{
 					*exp_kind=USER_DEFINED;
 					*exp_type=NULL;
+					error_occured=1;
 					printf("Error type 7 at Line %d: calculation requires both EXPs are int or (both are) float\n",h->line);
 				}
 				break;
@@ -567,6 +610,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 			}
 			if(!(head->child_count==1 && head->child[0]->type==_ID))
 			{
+				error_occured=1;
 				printf("Error type 10 at Line %d: use \"[]\" on none array variable\n",h->line);
 				*exp_kind=USER_DEFINED;
 				*exp_type=NULL;
@@ -581,6 +625,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 			}
 			if(temp->kind!=USER_DEFINED || temp->val_type->kind!=_array)
 			{
+				error_occured=1;
 				printf("Error type 10 at Line %d: use \"[]\" on none array variable\n",h->line);
 				*exp_kind=USER_DEFINED;
 				*exp_type=NULL;
@@ -603,6 +648,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 				}
 				else if(temp1!=_int)
 				{
+					error_occured=1;
 					printf("Error type 12 at Line %d: the type of exp between \"[]\" should be int\n",h->line);
 					*exp_kind=USER_DEFINED;
 					*exp_type=NULL;
@@ -614,6 +660,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 			if(current->dimension==0 && head!=h)
 			{
 				//[]过多
+				error_occured=1;
 				printf("Error type 10 at Line %d: use \"[]\" on none array variable\n",h->line);
 				*exp_kind=USER_DEFINED;
 				*exp_type=NULL;
@@ -631,6 +678,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 			}
 			else if(temp1!=_int)
 			{
+				error_occured=1;
 				printf("Error type 12 at Line %d: the type of exp between \"[]\" should be int\n",h->line);
 				*exp_kind=USER_DEFINED;
 				*exp_type=NULL;
@@ -670,6 +718,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 		{
 			if(find_value(h->child[0]->name)!=NULL)
 			{
+				error_occured=1;
 				printf("Error type 11 at Line %d: %s is a variable, not a function\n",h->line,h->child[0]->name);
 				*exp_kind=USER_DEFINED;
 				*exp_type=NULL;
@@ -692,6 +741,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 			}
 			if(count!=temp->parameter_count)
 			{
+				error_occured=1;
 				printf("Error type 9 at Line %d: unmatched parameters for function %s\n",h->line,temp->name);
 				*exp_kind=USER_DEFINED;
 				*exp_type=NULL;
@@ -712,6 +762,7 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 				}
 				if(temp1!=temp->kinds[i] || temp2!=temp->parameters[i])
 				{
+					error_occured=1;
 					printf("Error type 9 at Line %d: unmatched parameters for function %s\n",h->line,temp->name);
 					*exp_kind=USER_DEFINED;
 					*exp_type=NULL;
@@ -731,14 +782,20 @@ void* check_id(Node* h,id_type identity)
 	{
 		func_d* temp=find_function(h->name);
 		if(temp==NULL)
+		{
 			printf("Error type 2 at Line %d: undefined function %s\n",h->line,h->name);
+			error_occured=1;
+		}
 		return temp;
 	}
 	else
 	{
 		val_d* temp=find_value(h->name);
 		if(temp==NULL)
+		{
+			error_occured=1;
 			printf("Error type 1 at Line %d: undefined variable %s\n",h->line,h->name);
+		}
 		return temp;
 	}
 }

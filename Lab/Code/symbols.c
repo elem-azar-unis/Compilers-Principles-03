@@ -215,7 +215,10 @@ void array_generate_basic_dimension(type_d* t,int number,val_kind kind,type_d* v
 	t->def.a=(array_def_list*)malloc(sizeof(array_def_list));
 	t->def.a->dimension=0;
 	t->def.a->number=number;
-	t->def.a->size_of_each=4;
+	if(kind!=USER_DEFINED)
+		t->def.a->size_of_each=4;
+	else
+		t->def.a->size_of_each=struct_get_size(val_type);
 	t->def.a->kind=kind;
 	t->def.a->val_type=val_type;
 	t->def.a->next=NULL;
@@ -292,4 +295,38 @@ int value_stack_check(const char* name)
 	if(temp==NULL)
 		return 1;
 	return 0;
+}
+int struct_get_size(type_d* s)
+{
+	if(s->kind==_array)
+		return (s->def.a->number)*(s->def.a->size_of_each);
+	struct_def_list* p=s->def.s;
+	val_d* q;
+	int count=0;
+	for(int i=0;i<p->define_count;i++)
+	{
+		q=p->def_list[i];
+		if(q->kind!=USER_DEFINED)
+			count+=4;
+		else
+			count+=struct_get_size(q->val_type);
+	}
+	return count;
+}
+int struct_get_offset(type_d* s,char* field)
+{
+	val_d* field_ptr=find_value(field);
+	struct_def_list* p=s->def.s;
+	val_d* q;
+	int count=0;
+	for(int i=0;i<p->define_count;i++)
+	{
+		q=p->def_list[i];
+		if(q==field_ptr)break;
+		if(q->kind!=USER_DEFINED)
+			count+=4;
+		else
+			count+=struct_get_size(q->val_type);
+	}
+	return count;
 }
