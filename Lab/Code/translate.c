@@ -162,6 +162,10 @@ void translate_exp(Node* h,char* place,int option)
 			add_code(3,place,":=",h->child[0]->name);
 		}
 	}
+	if(h->child[0]->type==_LP)
+	{
+		return translate_exp(h->child[1],place,option);
+	}
 }
 void translate_cond(Node*h,char* label_true,char* label_false)
 {

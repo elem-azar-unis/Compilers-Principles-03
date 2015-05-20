@@ -1,7 +1,7 @@
 int main()
 {
 	int i=0;
-	if(i==0 || 3<5)
+	if(!(i))
 	{
 	int j=1;
 	}
