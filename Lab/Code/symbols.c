@@ -88,6 +88,7 @@ void destroy_symbol_table()
 			symbols.funcs=symbols.funcs->next;
 			free(p->kinds);
 			free(p->parameters);
+			free(p->parameter_list);
 			free(p);
 		}
 	}
@@ -198,6 +199,7 @@ func_d* new_function(const char* name)
 	p->parameters=NULL;
 	p->kinds=NULL;
 	p->return_type=NULL;
+	p->parameter_list=NULL;
 	return p;
 }
 val_d* new_value(const char* name)

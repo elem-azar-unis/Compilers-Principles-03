@@ -1,19 +1,22 @@
-int func(int x,int y,struct haha
-{
-int c,n;
-struct{float d;}e;
-float p;
-} z)
-{
-return x;
-}
-int main()
-{
-	struct haha i[3][3];
-	float j=i[1][2].p+i[0][0].e.d*1.5;
-	int temp=i[1][1].c;
-	temp=func(1,1,i[0][0]);
-	{int i;}
-	temp=i[0][0];
-	return temp;
-}
+struct haha
+{int haha1,haha2;};
+int fact(int n)
+ {
+ struct haha test[10];
+ if (n == 1)
+ return n;
+ else
+ return (n * fact(n - 1));
+ }
+ int main()
+ {
+ int m, result=1;
+ struct haha temp;
+ m = read();
+ if (m > 1)
+ result = fact(m);
+ else
+ result = 1;
+ write(result);
+ return 0;
+ }

@@ -181,6 +181,7 @@ int main(int argc,char** argv)
 		semantic_analysis(head);
 		if(!get_error_occured())
 		{
+			translate(head);
 			print_code(argv[2]);
 		}
 		destroy_symbol_table();

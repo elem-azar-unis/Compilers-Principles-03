@@ -73,6 +73,7 @@ typedef struct func_d
 	val_kind* kinds;			//参数类型标志
 	type_d** parameters;			//参数定义列表(如果某参数需要)
 	val_kind return_kind;
+	struct val_d** parameter_list;
 	type_d* return_type;		//返回值类型定义
 	struct func_d* next;		//下一个单元地址
 }func_d;

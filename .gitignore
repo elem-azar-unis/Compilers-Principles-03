@@ -8,3 +8,4 @@ parser
 *.tab.h
 *.output
 README
+test

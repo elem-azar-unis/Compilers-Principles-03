@@ -30,7 +30,7 @@ illID {digit}({letter_}|{digit})*
 ";" {yylval=create_node(_SEMI);yylval->line=yylineno;return SEMI;}
 "," {yylval=create_node(_COMMA);yylval->line=yylineno;return COMMA;}
 "=" {yylval=create_node(_ASSIGNOP);yylval->line=yylineno;return ASSIGNOP;}
-">"|"<"|">="|"<="|"=="|"!=" {yylval=create_node(_RELOP);yylval->line=yylineno;return RELOP;}
+">"|"<"|">="|"<="|"=="|"!=" {yylval=create_node(_RELOP);yylval->line=yylineno;strcpy(yylval->name,yytext);return RELOP;}
 "+" {yylval=create_node(_PLUS);yylval->line=yylineno;return PLUS;}
 "-" {yylval=create_node(_MINUS);yylval->line=yylineno;return MINUS;} 
 "*" {yylval=create_node(_STAR);yylval->line=yylineno;return STAR;}
