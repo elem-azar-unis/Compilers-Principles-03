@@ -8,4 +8,5 @@ parser
 *.tab.h
 *.output
 README
-test
+*.ir
+*.pyc

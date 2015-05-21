@@ -34,17 +34,17 @@ syntax-c: $(YFILE)
 # 定义的一些伪目标
 .PHONY: clean test1 test2 test3 test4 test5 test6
 test1: 
-	./parser ../Test/test1.cmm test
+	./parser ../Test/test1.cmm test.ir
 test2: 
-	./parser ../Test/test2.cmm test
+	./parser ../Test/test2.cmm test.ir
 test3: 
-	./parser ../Test/test3.cmm test
+	./parser ../Test/test3.cmm test.ir
 test4: 
-	./parser ../Test/test4.cmm test
+	./parser ../Test/test4.cmm test.ir
 test5: 
-	./parser ../Test/test5.cmm test
+	./parser ../Test/test5.cmm test.ir
 test6: 
-	./parser ../Test/test6.cmm test
+	./parser ../Test/test6.cmm test.ir
 clean:
 	rm -f parser lex.yy.c syntax.tab.c syntax.tab.h syntax.output
 	rm -f $(OBJS) $(OBJS:.o=.d)
