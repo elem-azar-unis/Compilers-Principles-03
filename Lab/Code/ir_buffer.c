@@ -247,8 +247,8 @@ void optimize_jump()
 		}
 		p=p->prev;
 	}while(p!=head->prev);
-	/* 优化 goto a； (语句块S，没有label)；label a；表示其实中间的语句永远是不可达的，因为goto后面第一个label就是自己，
-	 * 所以语句块S只能从goto开始顺序执行到，而不能从其他地方跳转进来。故goto a和语句块S可以删掉。
+	/* 优化 goto a； (语句块S，没有label)；label *；表示其实中间的语句永远是不可达的，
+	 * 即语句块S只能从goto开始顺序执行到，而不能从其他地方跳转进来。故语句块S可以删掉。
 	*/
 	p=head;
 	do
@@ -263,14 +263,62 @@ void optimize_jump()
 				p=p->next;
 				continue;
 			}
-			if(strcmp(q->args[1],p->args[1])==0)
+			while(p->next!=q)
 			{
 				changed=1;
-				while(p!=q)
-				{
-					delete_code_node(p);
-					p=p->next;
-				}
+				p=p->next;
+				delete_code_node(p);
+			}
+		}
+		p=p->next;
+	}while(p!=head);
+	/* goto a;...;LABEL a;(LABELs);goto b; ==> goto b;...;LABEL a;(LABELs);goto b;
+	 * goto a;...;LABEL a;(LABELs);return *; ==> return *;...;LABEL a;(LABELs);return *;
+	 * LABEL a;(LABELs);goto a; ==>LABEL a;(LABELs);
+	 */
+	p=head;
+	do
+	{
+		if(strcmp("GOTO",p->args[0])==0)
+		{
+			code_node* q=p->next;
+			while(strcmp("LABEL",q->args[0])!=0 || strcmp(q->args[1],p->args[1])!=0)
+				q=q->next;
+			while(strcmp("LABEL",q->args[0])==0)
+				q=q->next;
+			if(p==q)
+			{
+				changed=1;
+				delete_code_node(p);
+			}
+			else if(strcmp(q->args[0],"GOTO")==0)
+			{
+				changed=1;
+				strcpy(p->args[1],q->args[1]);
+			}
+			else if(strcmp(q->args[0],"RETURN")==0)
+			{
+				changed=1;
+				strcpy(p->args[0],q->args[0]);
+				strcpy(p->args[1],q->args[1]);
+			}
+		}
+		else if(p->args_count==6)
+		{
+			code_node* q=p->next;
+			while(strcmp("LABEL",q->args[0])!=0 || strcmp(q->args[1],p->args[5])!=0)
+				q=q->next;
+			while(strcmp("LABEL",q->args[0])==0)
+				q=q->next;
+			if(p==q)
+			{
+				changed=1;
+				delete_code_node(p);
+			}
+			else if(strcmp(q->args[0],"GOTO")==0)
+			{
+				changed=1;
+				strcpy(p->args[5],q->args[1]);
 			}
 		}
 		p=p->next;

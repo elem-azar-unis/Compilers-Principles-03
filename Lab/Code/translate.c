@@ -398,6 +398,8 @@ void translate_exp(Node* h,char* place,int option)
 	else if(h->child[0]->type==_NOT || h->child[1]->type==_RELOP || h->child[1]->type==_AND || h->child[1]->type==_OR)
 	{
 		char label1[32],label2[32];
+		new_label(label1);
+		new_label(label2);
 		if(option==0)
 			new_temp(place);
 		add_code(3,place,":=","#0");
