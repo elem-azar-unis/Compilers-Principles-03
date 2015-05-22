@@ -1,22 +1,21 @@
-struct haha
-{int haha1,haha2;};
-int fact(int n)
+struct Operands
  {
- struct haha test[10];
- if (n == 1)
- return n;
- else
- return (n * fact(n - 1));
+ int o1;
+ int o2;
+ };
+
+ int add(struct Operands temp)
+ {
+ return (temp.o1 + temp.o2);
  }
+
  int main()
  {
- int m, result=1;
- struct haha temp;
- m = read();
- if (m > 1)
- result = fact(m);
- else
- result = 1;
- write(result);
+ int n;
+ struct Operands op;
+ op.o1 = 1;
+ op.o2 = 2;
+ n = add(op);
+ write(n);
  return 0;
  }

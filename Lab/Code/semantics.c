@@ -612,8 +612,8 @@ void ana_exp(val_kind* exp_kind,type_d** exp_type,Node* h)
 			}
 			if(!(head->child_count==1 && head->child[0]->type==_ID))
 			{
-				error_occured=1;
-				printf("Error type 10 at Line %d: use \"[]\" on none array variable\n",h->line);
+				error_occured=0;
+				//printf("Error type 10 at Line %d: use \"[]\" on none array variable\n",h->line);
 				*exp_kind=USER_DEFINED;
 				*exp_type=NULL;
 				return;

@@ -26,6 +26,8 @@ static int temp_count=0,label_count=0;
 static code_node* head=NULL;
 //是否本次有优化
 static int changed=0;
+//优化选项
+static int opt=1;
 
 //中间代码后期优化
 void optimize();
@@ -79,6 +81,10 @@ void make_oppo_relop(char* op)
 		strcpy(op,"==");
 }
 
+void close_opt()
+{
+	opt=0;
+}
 //生成新的label，名称放在提供好的name里面。
 void new_label(char* name)
 {
@@ -127,7 +133,7 @@ void print_code(char* name)
 	FILE* fp;
 	fp=fopen(name,"w");
 	assert(fp!=NULL);
-	optimize();
+	if(opt)optimize();
 	code_node* p=head;
 	print_one_line(fp,p);
 	p=p->next;
@@ -250,7 +256,7 @@ void optimize_jump()
 		if(strcmp("GOTO",p->args[0])==0)
 		{
 			code_node* q=p->next;
-			while(strcmp("LABEL",q->args[0])!=0 && q!=head)
+			while(q!=head && strcmp("LABEL",q->args[0])!=0)
 				q=q->next;
 			if(q==head)
 			{
@@ -267,6 +273,19 @@ void optimize_jump()
 				}
 			}
 		}
+		p=p->next;
+	}while(p!=head);
+	//在return后面的语句，直到下一个label/function，都是永远不可达的。删掉他们。
+	p=head;
+	do
+	{
+		if(strcmp(p->args[0],"RETURN")==0)
+			while(p->next!=head && strcmp(p->next->args[0],"LABEL")!=0 && strcmp(p->next->args[0],"FUNCTION")!=0)
+			{
+				p=p->next;
+				changed=1;
+				delete_code_node(p);
+			}
 		p=p->next;
 	}while(p!=head);
 	//label 去重。 LABEL a； LABEL b，则把所有用到b的地方都变成a，删掉b。

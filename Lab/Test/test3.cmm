@@ -1,26 +1,16 @@
-struct A{
-	int a;
-	int b;
-	struct B{
-		int z[2][4];
-		struct C{
-			int y;
-		} x;
-	} u;
-	struct B w;
+struct A
+{
+int a;
+struct {int b[10];}c[10];
+int d;
 };
-int to, from;
 int main()
 {
-	int k[3][4][5];
-	float j = 2*m;
-	int i=j;
-	struct A d;
-	struct Z e;
-	k = j;
-	j && j;
-	j || j;
-	1 = i;
-	hello(i, j);
-	return 2.3;
+struct A temp,atemp[10];
+int i,ai[10];
+i=temp.d;
+i=temp.c[2].b[0];
+ai[0]=temp.c[2].b[3];
+ai[2]=atemp[3].c[1].b[2];
+ai[i]=atemp[temp.c[0*3].b[3]].c[atemp[1].c[1].b[2*1]].b[i];
 }

@@ -50,3 +50,5 @@ void new_temp(char* name);
 void add_code(int args_count,...);
 //将内存中的代码打印到文件中，传入新文件路径，并顺便清理内存中的代码存储
 void print_code(char* name);
+//关闭优化
+void close_opt();
