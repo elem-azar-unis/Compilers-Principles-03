@@ -57,6 +57,7 @@ int label_is_using(char* name)
 //一个变量是否有用，否则这个变量的定义可以删除了。
 int var_is_using(char* name)
 {
+	if(name[0]=='*')return 1;
 	code_node* p=head;
 	do
 	{
@@ -75,6 +76,7 @@ int var_is_using(char* name)
 int var_is_using_til(code_node* begin,code_node* end)
 {
 	if(begin->args_count==4)return 1;
+	if(begin->args[0][0]=='*')return 1;
 	code_node* p=begin->next;
 	while(p!=end)
 	{
