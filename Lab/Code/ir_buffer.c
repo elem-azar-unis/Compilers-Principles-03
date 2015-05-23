@@ -33,6 +33,9 @@ static int opt=1;
 void optimize();
 //中间代码后期优化:jump
 void optimize_jump();
+//中间代码后期优化：exp,exp分出来的基本快(开始节点和结束节点，左闭右开)
+void optimize_exp();
+void optimize_block(code_node* begin,code_node* end);
 //释放中间代码buffer
 void ir_buffer_destroy();
 //向文件中打印一行代码
@@ -51,6 +54,123 @@ int label_is_using(char* name)
 	}while(p!=head);
 	return 0;
 }
+//一个变量是否有用，否则这个变量的定义可以删除了。
+int var_is_using(char* name)
+{
+	code_node* p=head;
+	do
+	{
+		if(strcmp(name,p->args[0])==0 && p->args_count==4)
+			return 1;
+		if(strcmp(name,&(p->args[0][1]))==0 && p->args[0][0]=='*')
+			return 1;
+		for(int i=1;i<p->args_count;i++)
+			if(strcmp(name,p->args[i])==0 || strcmp(name,&(p->args[i][1]))==0)
+				return 1;
+		p=p->next;
+	}while(p!=head);
+	return 0;
+}
+//一个变量，直到它下次赋值，是否有用，否则这个变量的定义行可以删除了。
+int var_is_using_til(code_node* begin,code_node* end)
+{
+	if(begin->args_count==4)return 1;
+	code_node* p=begin->next;
+	while(p!=end)
+	{
+		if(strcmp(begin->args[0],p->args[0])==0)return 0;
+		if(strcmp(begin->args[0],&(p->args[0][1]))==0 && p->args[0][0]=='*')
+			return 1;
+		for(int i=1;i<p->args_count;i++)
+			if(strcmp(begin->args[0],p->args[i])==0 || strcmp(begin->args[0],&(p->args[i][1]))==0)
+				return 1;
+		p=p->next;
+	}
+	return 1;
+}
+//查看p的参数是否在q处赋值,或者p在此处改变了
+int var_relevant(code_node* p,code_node* q)
+{
+	if(strcmp(q->args[1],":=")!=0)return 0;
+	if(strcmp(p->args[0],q->args[0])==0)return 1;
+	if(p->args_count==4)return 0;
+	if(p->args[2][0]!='&' && p->args[2][0]!='#')
+	{
+		if(p->args[2][0]=='*' && strcmp(q->args[0],&(p->args[2][1]))==0)
+			return 1;
+
+		else if(strcmp(q->args[0],p->args[2])==0)
+			return 1;
+	}
+	if(p->args_count==5)
+	{
+		if(p->args[4][0]!='&' && p->args[4][0]!='#')
+		{
+			if(p->args[4][0]=='*' && strcmp(q->args[0],&(p->args[4][1]))==0)
+				return 1;
+			
+			else if(strcmp(q->args[0],p->args[4])==0)
+				return 1;
+		}
+	}
+	return 0;
+}
+//两个var的定义是一样的。
+int var_equal(code_node* p,code_node* q)
+{
+	if(p->args_count!=q->args_count)return 0;
+	if(p->args_count==4)return 0;
+	if(strcmp(q->args[1],":=")!=0)return 0;
+	if(p->args_count==3)
+	{
+		if(strcmp(p->args[2],q->args[2])!=0)
+			return 0;
+		else 
+			return 1;
+	}
+	else
+	{
+		if(strcmp(p->args[3],q->args[3])!=0)return 0;
+		if(strcmp(p->args[3],"+")==0 || strcmp(p->args[3],"*")==0)
+		{
+			if(strcmp(p->args[2],q->args[2])==0 && strcmp(p->args[4],q->args[4])==0)
+				return 1;
+			else if(strcmp(p->args[2],q->args[4])==0 && strcmp(p->args[4],q->args[2])==0)
+				return 1;
+			else
+				return 0;
+		}
+		else
+		{
+			if(strcmp(p->args[2],q->args[2])==0 && strcmp(p->args[4],q->args[4])==0)
+				return 1;
+			else
+				return 0;
+		}
+	}
+}
+//将从开始到结束的old var替换成new var,区间左闭右开
+void var_change(code_node* begin,code_node* end,char* old,char* new)
+{
+	code_node* p=begin;
+	do
+	{
+		for(int i=1;i<p->args_count;i++)
+		{
+			if(strcmp(old,p->args[i])==0)
+			{
+				changed=1;
+				strcpy(p->args[i],new);
+			}
+			else if(strcmp(old,&(p->args[i][1]))==0 && p->args[i][0]!='&')
+			{
+				changed=1;
+				strcpy(&(p->args[i][1]),new);
+			}
+		}
+		p=p->next;
+	}while(p!=end);
+}
 //将所有用到old label的地方替换成new label
 void label_change(char* old,char* new)
 {
@@ -58,9 +178,15 @@ void label_change(char* old,char* new)
 	do
 	{
 		if(p->args_count==6 && strcmp(p->args[5],old)==0)
+		{
+			changed=1;
 			strcpy(p->args[5],new);
+		}
 		else if(strcmp(p->args[0],"GOTO")==0 && strcmp(p->args[1],old)==0)
+		{
+			changed-1;
 			strcpy(p->args[1],new);
+		}
 		p=p->next;
 	}while(p!=head);
 }
@@ -363,11 +489,108 @@ void optimize_jump()
 		p=p->next;
 	}while(p!=head);
 }
+void optimize_exp()
+{
+	//第一步，分片，分片内部，局部优化
+	code_node* p=head,*q;
+	do
+	{
+		q=p->next;
+		while(1)
+		{
+			if(strcmp(q->args[0],"LABEL")==0)
+				break;
+			else if(strcmp(q->args[0],"GOTO")==0 || strcmp(q->args[0],"RETURN")==0 || q->args_count==6)
+			{
+				q=q->next;
+				break;
+			}
+			else if(q==head) break;
+			q=q->next;
+		}
+		optimize_block(p,q);
+		p=q;
+	}while(p!=head);
+	//第二步，清除没有用的变量赋值。
+	p=head;
+	do
+	{
+		if(strcmp(p->args[1],":=")==0)
+		{	
+			if(!var_is_using(p->args[0]))
+			{	
+				delete_code_node(p);
+				changed=1;
+			}
+		}
+		p=p->next;
+	}while(p!=head);
+}
+void optimize_block(code_node* begin,code_node* end)
+{
+	//重复一样的变量赋值模式替换
+	code_node* p=begin,*q;
+	do
+	{
+		if(strcmp(p->args[1],":=")==0)
+		{
+			q=p->next;
+			while(q!=end && !var_relevant(p,q))
+			{
+				if(var_equal(p,q))
+				{
+					var_change(q,end,q->args[0],p->args[0]);
+				}
+				q=q->next;
+			}
+		}
+		p=p->next;
+	}while(p!=end);
+	//a=b-b==>a=0 a=b/b==>a=1
+	p=begin;
+	do
+	{
+		if(strcmp(p->args[1],":=")==0 && p->args_count==5)
+		{
+			if(strcmp(p->args[2],p->args[4])==0)
+			{
+				if(strcmp(p->args[3],"-")==0)
+				{
+					changed=1;
+					p->args_count=3;
+					strcpy(p->args[2],"#0");
+				}
+				else if(strcmp(p->args[3],"/")==0)
+				{
+					changed=1;
+					p->args_count=3;
+					strcpy(p->args[2],"#1");
+				}
+			}
+		}
+		p=p->next;
+	}while(p!=end);
+	//a=...(1);...(没用到a);a=...(2); ==> ...(没用到a);a=...(2);
+	p=begin;
+	do
+	{
+		if(strcmp(p->args[1],":=")==0)
+		{
+			if(!var_is_using_til(p,end))
+			{
+				changed=1;
+				delete_code_node(p);
+			}
+		}
+		p=p->next;
+	}while(p!=end);
+}
 void optimize()
 {
 	do
 	{
 		changed=0;
 		optimize_jump();
+		optimize_exp();
 	}while(changed);
 }
