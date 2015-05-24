@@ -80,7 +80,15 @@ int var_is_using_til(code_node* begin,code_node* end)
 	code_node* p=begin->next;
 	while(p!=end)
 	{
-		if(strcmp(begin->args[0],p->args[0])==0)return 0;
+		if(strcmp(begin->args[0],p->args[0])==0)
+		{
+			for(int i=1;i<p->args_count;i++)
+			{
+				if(strcmp(begin->args[0],p->args[i])==0 || strcmp(begin->args[0],&(p->args[i][1]))==0)
+					return 1;
+			}
+			return 0;
+		}
 		if(strcmp(begin->args[0],&(p->args[0][1]))==0 && p->args[0][0]=='*')
 			return 1;
 		for(int i=1;i<p->args_count;i++)
@@ -122,6 +130,7 @@ int var_equal(code_node* p,code_node* q)
 {
 	if(p->args_count!=q->args_count)return 0;
 	if(p->args_count==4)return 0;
+	if(p->args[0][0]=='*' || q->args[0][0]=='*')return 0;
 	if(strcmp(q->args[1],":=")!=0)return 0;
 	if(p->args_count==3)
 	{
@@ -169,6 +178,11 @@ void var_change(code_node* begin,code_node* end,char* old,char* new)
 				changed=1;
 				strcpy(&(p->args[i][1]),new);
 			}
+		}
+		if(p->args[0][0]=='*' && strcmp(&(p->args[0][1]),old)==0)
+		{
+			changed=1;
+			strcpy(&(p->args[0][1]),new);
 		}
 		p=p->next;
 	}while(p!=end);
@@ -263,13 +277,11 @@ void print_code(char* name)
 	assert(fp!=NULL);
 	if(opt)optimize();
 	code_node* p=head;
-	print_one_line(fp,p);
-	p=p->next;
-	while(p!=head)
+	do
 	{
 		print_one_line(fp,p);
 		p=p->next;
-	}
+	}while(p!=head);
 	ir_buffer_destroy();
 	fclose(fp);
 }
@@ -289,10 +301,23 @@ void ir_buffer_destroy()
 //向文件中打印一行代码
 void print_one_line(FILE* fp,code_node* p)
 {
-	fprintf(fp,"%s",p->args[0]);
-	for(int i=1;i<p->args_count;i++)
-		fprintf(fp," %s",p->args[i]);
-	fprintf(fp,"\n");
+	if(p->args_count==5 && p->args[0][0]=='*')
+	{
+		char temp[32];
+		new_temp(temp);
+		fprintf(fp,"%s",temp);
+		for(int i=1;i<p->args_count;i++)
+			fprintf(fp," %s",p->args[i]);
+		fprintf(fp,"\n");
+		fprintf(fp,"%s := %s\n",p->args[0],temp);
+	}
+	else
+	{
+		fprintf(fp,"%s",p->args[0]);
+		for(int i=1;i<p->args_count;i++)
+			fprintf(fp," %s",p->args[i]);
+		fprintf(fp,"\n");
+	}
 }
 //中间代码后期优化:jump
 void optimize_jump()
@@ -400,9 +425,10 @@ void optimize_jump()
 		}
 		p=p->next;
 	}while(p!=head);
-	/* goto a;...;LABEL a;(LABELs);goto b; ==> goto b;...;LABEL a;(LABELs);goto b;
-	 * goto a;...;LABEL a;(LABELs);return *; ==> return *;...;LABEL a;(LABELs);return *;
-	 * LABEL a;(LABELs);goto a; ==>LABEL a;(LABELs);
+	/* 1、goto a;...;LABEL a;(LABELs);goto b; ==> goto b;...;LABEL a;(LABELs);goto b;
+	 * 2、goto a;...;LABEL a;(LABELs);return *; ==> return *;...;LABEL a;(LABELs);return *;
+	 * 3、LABEL a;(LABELs);goto a; ==>LABEL a;(LABELs);
+	 * 上面的替换中，1、3条对 if xxx goto a 也是有效的。
 	 */
 	p=head;
 	do
@@ -552,7 +578,7 @@ void optimize_block(code_node* begin,code_node* end)
 	p=begin;
 	do
 	{
-		if(strcmp(p->args[1],":=")==0 && p->args_count==5)
+		if(p->args_count==5)
 		{
 			if(strcmp(p->args[2],p->args[4])==0)
 			{
@@ -569,6 +595,17 @@ void optimize_block(code_node* begin,code_node* end)
 					strcpy(p->args[2],"#1");
 				}
 			}
+		}
+		p=p->next;
+	}while(p!=end);
+	//删掉a=a这样无意义的赋值。
+	p=begin;
+	do
+	{
+		if(p->args_count==3 && strcmp(p->args[1],":=")==0 && strcmp(p->args[0],p->args[2])==0)
+		{
+			changed=1;
+			delete_code_node(p);
 		}
 		p=p->next;
 	}while(p!=end);

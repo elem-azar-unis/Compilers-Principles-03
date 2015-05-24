@@ -1,8 +1,6 @@
 int mod(int x,int n)
 {
-while(x>0)x=x-n;
-if(x==0)return 0;
-else return 1;
+return x-(x/n)*n;
 }
 int main() 
 { 
