@@ -301,7 +301,7 @@ void ir_buffer_destroy()
 //向文件中打印一行代码
 void print_one_line(FILE* fp,code_node* p)
 {
-	if(p->args_count==5 && p->args[0][0]=='*')
+	if(p->args_count!=3 && p->args[0][0]=='*')
 	{
 		char temp[32];
 		new_temp(temp);
