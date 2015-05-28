@@ -166,8 +166,6 @@ void var_change(code_node* begin,code_node* end,char* old,char* new)
 	code_node* p=begin;
 	do
 	{
-		if(strcmp(p->args[0],old)==0 || strcmp(p->args[0],new)==0)
-			break;
 		for(int i=1;i<p->args_count;i++)
 		{
 			if(strcmp(old,p->args[i])==0)
@@ -187,7 +185,7 @@ void var_change(code_node* begin,code_node* end,char* old,char* new)
 			strcpy(&(p->args[0][1]),new);
 		}
 		p=p->next;
-	}while(p!=end);
+	}while(p!=end && strcmp(p->args[0],old)!=0 && strcmp(p->args[0],new)!=0);
 }
 //将所有用到old label的地方替换成new label
 void label_change(char* old,char* new)
