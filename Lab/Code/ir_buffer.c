@@ -311,6 +311,13 @@ void print_one_line(FILE* fp,code_node* p)
 		fprintf(fp,"\n");
 		fprintf(fp,"%s := %s\n",p->args[0],temp);
 	}
+	else if(p->args_count==2 && p->args[1][0]=='*' && strcmp(p->args[0],"READ")==0)
+	{
+		char temp[32];
+		new_temp(temp);
+		fprintf(fp,"READ %s\n",&temp[1]);
+		fprintf(fp,"%s := %s\n",p->args[1],&temp[1]);
+	}
 	else
 	{
 		fprintf(fp,"%s",p->args[0]);
