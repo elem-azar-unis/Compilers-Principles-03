@@ -160,12 +160,14 @@ int var_equal(code_node* p,code_node* q)
 		}
 	}
 }
-//将从开始到结束的old var替换成new var,区间左闭右开
+//将从开始到结束的old var替换成new var,区间左闭右开，直到有人改变。
 void var_change(code_node* begin,code_node* end,char* old,char* new)
 {
 	code_node* p=begin;
 	do
 	{
+		if(strcmp(p->args[0],old)==0 || strcmp(p->args[0],new)==0)
+			break;
 		for(int i=1;i<p->args_count;i++)
 		{
 			if(strcmp(old,p->args[i])==0)
